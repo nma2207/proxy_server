@@ -179,6 +179,10 @@ bool Server::run()
                 }
             }
         }
+
+        std::remove_if(_pollSet.begin(), _pollSet.end(), [](pollfd pfd){
+            return pfd.fd == -1;
+        });
     }
 }
 
@@ -232,16 +236,14 @@ void Server::closeConnection(int clientSock)
 
     _sessions.erase(sessionIt);
     _connectionTypes.erase(clientSock);
-    _pollSet.erase(findInPoll(clientSock));
+    findInPoll(clientSock)->fd = -1;
 
 
     if (serverSock > 0) {
         ::close(sessionIt->serverSock);
         _connectionTypes.erase(serverSock);
-        _pollSet.erase(findInPoll(serverSock));
+        findInPoll(serverSock)->fd=-1;
     }
-
-
 }
 
 std::vector<Server::Session>::iterator Server::findByClient(int clientSock)
