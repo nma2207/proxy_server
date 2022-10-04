@@ -7,196 +7,228 @@
 class MessageParser
 {
 public:
-    MessageParser();
-    virtual std::string parse(const std::string& type, char *buffer, int len) {
+    explicit MessageParser(const std::string& type)
+        : type{type}
+    {}
+    virtual std::string parse(char *buffer, int len) {
         return type;
-    };
+    }
+protected:
+    std::string type;
 };
 
 class StartupParser : public MessageParser
 {
 public:
-    StartupParser();
-    std::string parse(const std::string& type, char* buffer, int len) override;
+    StartupParser(const std::string& type) : MessageParser{type}{};
+    std::string parse(char* buffer, int len) override;
 };
 
 class AuthParser : public MessageParser
 {
 public:
-    AuthParser();
-    std::string parse(const std::string& type, char* buffer, int len) override;
+    AuthParser(const std::string& type) : MessageParser{type}{}
+    std::string parse(char* buffer, int len) override;
 };
 
 class BackendKeyParser: public MessageParser {
 public:
-    BackendKeyParser();
-    std::string parse(const std::string& type, char* buffer, int len) override;
+    BackendKeyParser(const std::string& type) : MessageParser{type}{};
+    std::string parse(char* buffer, int len) override;
 };
 
 class BindParser : public MessageParser
 {
 public:
-    BindParser();
-    std::string parse(const std::string& type, char* buffer, int len) override;
+    BindParser(const std::string& type) : MessageParser{type}{};
+    std::string parse(char* buffer, int len) override;
 };
 
 
 class CancelRequestParser : public MessageParser
 {
 public:
-    CancelRequestParser();
-    std::string parse(const std::string& type, char* buffer, int len) override;
+    CancelRequestParser(const std::string& type) : MessageParser{type}{};
+    std::string parse(char* buffer, int len) override;
 };
 
 class CloseParser : public MessageParser
 {
 public:
-    CloseParser();
-    std::string parse(const std::string& type, char* buffer, int len) override;
+    CloseParser(const std::string& type) : MessageParser{type}{};
+    std::string parse(char* buffer, int len) override;
 };
 
 class CommandCompleteParser : public MessageParser
 {
 public:
-    CommandCompleteParser();
-    std::string parse(const std::string& type, char* buffer, int len) override;
+    CommandCompleteParser(const std::string& type) : MessageParser{type}{};
+    std::string parse(char* buffer, int len) override;
 };
 
 class CopyDataParser : public MessageParser
 {
 public:
-    CopyDataParser();
-    std::string parse(const std::string& type, char* buffer, int len) override;
+    CopyDataParser(const std::string& type) : MessageParser{type}{};
+    std::string parse(char* buffer, int len) override;
 };
 
 
 class CopyFailParser : public MessageParser
 {
 public:
-    CopyFailParser();
-    std::string parse(const std::string& type, char* buffer, int len) override;
+    CopyFailParser(const std::string& type) : MessageParser{type}{};
+    std::string parse(char* buffer, int len) override;
+};
+
+class CopyInParser : public MessageParser
+{
+public:
+    CopyInParser(const std::string& type) : MessageParser{type}{};
+    std::string parse(char* buffer, int len) override;
 };
 
 class CopyOutParser : public MessageParser
 {
 public:
-    CopyOutParser();
-    std::string parse(const std::string& type, char* buffer, int len) override;
+    CopyOutParser(const std::string& type) : MessageParser{type}{};
+    std::string parse(char* buffer, int len) override;
+};
+
+class CopyBothParser : public MessageParser
+{
+public:
+    CopyBothParser(const std::string& type) : MessageParser{type}{};
+    std::string parse(char* buffer, int len) override;
 };
 
 
 class DataRowParser : public MessageParser
 {
 public:
-    DataRowParser();
-    std::string parse(const std::string& type, char* buffer, int len) override;
+    DataRowParser(const std::string& type) : MessageParser{type}{};
+    std::string parse(char* buffer, int len) override;
 };
 
 
 class DescribeParser : public MessageParser
 {
 public:
-    DescribeParser();
-    std::string parse(const std::string& type, char* buffer, int len) override;
+    DescribeParser(const std::string& type) : MessageParser{type}{};
+    std::string parse(char* buffer, int len) override;
 };
 
 
 class ErrorResponceParser : public MessageParser
 {
 public:
-    ErrorResponceParser();
-    std::string parse(const std::string& type, char* buffer, int len) override;
+    ErrorResponceParser(const std::string& type) : MessageParser{type}{};
+    std::string parse(char* buffer, int len) override;
 };
 
 class ExecuteParser : public MessageParser
 {
 public:
-    ExecuteParser();
-    std::string parse(const std::string& type, char* buffer, int len) override;
+    ExecuteParser(const std::string& type) : MessageParser{type}{};
+    std::string parse(char* buffer, int len) override;
 };
 
 
 class FunctionCallParser : public MessageParser
 {
 public:
-    FunctionCallParser();
-    std::string parse(const std::string& type, char* buffer, int len) override;
+    FunctionCallParser(const std::string& type) : MessageParser{type}{};
+    std::string parse(char* buffer, int len) override;
 };
 
 class FunctionCallResponceParser : public MessageParser
 {
 public:
-    FunctionCallResponceParser();
-    std::string parse(const std::string& type, char* buffer, int len) override;
+    FunctionCallResponceParser(const std::string& type) : MessageParser{type}{};
+    std::string parse(char* buffer, int len) override;
 };
 
 class NegotiateProtocolVersionParser: public MessageParser
 {
 public:
-    NegotiateProtocolVersionParser();
-    std::string parse(const std::string& type, char* buffer, int len) override;
+    NegotiateProtocolVersionParser(const std::string& type) : MessageParser{type}{};
+    std::string parse(char* buffer, int len) override;
 };
 
 class NoticeResponseParser: public MessageParser
 {
 public:
-    NoticeResponseParser();
-    std::string parse(const std::string& type, char* buffer, int len) override;
+    NoticeResponseParser(const std::string& type) : MessageParser{type}{};
+    std::string parse(char* buffer, int len) override;
 };
 
 class NotificationResponseParser: public MessageParser
 {
 public:
-    NotificationResponseParser();
-    std::string parse(const std::string& type, char* buffer, int len) override;
+    NotificationResponseParser(const std::string& type) : MessageParser{type}{};
+    std::string parse(char* buffer, int len) override;
 };
 
-class ParameterDesctiotionParser: public MessageParser
+class ParameterDescriptionParser: public MessageParser
 {
 public:
-    ParameterDesctiotionParser();
-    std::string parse(const std::string& type, char* buffer, int len) override;
+    ParameterDescriptionParser(const std::string& type) : MessageParser{type}{};
+    std::string parse(char* buffer, int len) override;
+};
+
+class ParameterStatusParser: public MessageParser
+{
+public:
+    ParameterStatusParser(const std::string& type) : MessageParser{type}{};
+    std::string parse(char* buffer, int len) override;
 };
 
 
 class ParseParser: public MessageParser
 {
 public:
-    ParseParser();
-    std::string parse(const std::string& type, char* buffer, int len) override;
+    ParseParser(const std::string& type) : MessageParser{type}{};
+    std::string parse(char* buffer, int len) override;
 };
 
 class PasswordMessageParser: public MessageParser
 {
 public:
-    PasswordMessageParser();
-    std::string parse(const std::string& type, char* buffer, int len) override;
+    PasswordMessageParser(const std::string& type) : MessageParser{type}{};
+    std::string parse(char* buffer, int len) override;
 };
 
 class PortalSuspendedParser: public MessageParser
 {
 public:
-    PortalSuspendedParser();
-    std::string parse(const std::string& type, char* buffer, int len) override;
+    PortalSuspendedParser(const std::string& type) : MessageParser{type}{};
+    std::string parse(char* buffer, int len) override;
+};
+
+class QueryParser: public MessageParser
+{
+public:
+    QueryParser(const std::string& type) : MessageParser{type}{};
+    std::string parse(char* buffer, int len) override;
 };
 
 class ReadyForQueryParser: public MessageParser
 {
 public:
-    ReadyForQueryParser();
-    std::string parse(const std::string& type, char* buffer, int len) override;
+    ReadyForQueryParser(const std::string& type) : MessageParser{type}{};
+    std::string parse(char* buffer, int len) override;
 };
 
 class RowDescriptionParser: public MessageParser
 {
 public:
-    RowDescriptionParser();
-    std::string parse(const std::string& type, char* buffer, int len) override;
+    RowDescriptionParser(const std::string& type) : MessageParser{type}{};
+    std::string parse(char* buffer, int len) override;
 };
 
 class SslRequestParser: public MessageParser
 {
 public:
-    SslRequestParser();
-    std::string parse(const std::string& type, char* buffer, int len) override;
+    SslRequestParser(const std::string& type) : MessageParser{type}{};
+    std::string parse(char* buffer, int len) override;
 };

@@ -8,9 +8,12 @@ class PostgreSqlManager
 {
 public:
     PostgreSqlManager();
-    std::string parse(char* buffer, int len) const;
+    ~PostgreSqlManager();
+    std::string parseB(char* buffer, int len);
+    std::string parseF(char* buffer, int len);
 
 private:
-    std::map<char, std::unique_ptr<MessageParser>> parsers;
+    std::map<char, MessageParser*> _parsersB;
+    std::map<char, MessageParser*> _parsersF;
 
 };
