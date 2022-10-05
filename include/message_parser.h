@@ -198,13 +198,6 @@ public:
     std::string parse(char* buffer, int len) override;
 };
 
-class PortalSuspendedParser: public MessageParser
-{
-public:
-    PortalSuspendedParser(const std::string& type) : MessageParser{type}{};
-    std::string parse(char* buffer, int len) override;
-};
-
 class QueryParser: public MessageParser
 {
 public:
@@ -225,6 +218,11 @@ public:
     RowDescriptionParser(const std::string& type) : MessageParser{type}{};
     std::string parse(char* buffer, int len) override;
 };
+
+inline std::string RowDescriptionParser::parse(char *buffer, int len)
+{
+
+}
 
 class SslRequestParser: public MessageParser
 {
