@@ -1,6 +1,7 @@
 #include "server.h"
 
 #include <iostream>
+#include <fstream>
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <poll.h>
@@ -13,6 +14,8 @@
 #include <linux/tcp.h>
 #include <fcntl.h>
 
+const int Server::BUFFER_SIZE=1024;
+const std::string Server::LOG_FILENAME = "query.txt";
 
 Server::Server(int port, const std::string& serverIp, int serverPort)
     : _port{port}
@@ -138,6 +141,7 @@ bool Server::run()
                                 closeConnection(sessIt->clientSock);
                             }
                             std::cout << "sended bytes to server" << std::endl;
+                            std::string parserRes = psqlManager.parseF(message, nbytes);
                         }
                         else if (type == ProxyServer && sessIt->clientSock > 0) {
                             int sendBytes = send(sessIt->clientSock, message, nbytes, MSG_NOSIGNAL);
@@ -148,6 +152,7 @@ bool Server::run()
                                 closeConnection(sessIt->clientSock);
                             }
                             std::cout << "sended bytes to client" << std::endl;
+                            std::string parserRes = psqlManager.parseB(message, nbytes);
                         }
                         else if (sessIt->serverSock == 0) {
                             int serverSock = this->createServerSock();
@@ -162,7 +167,7 @@ bool Server::run()
                             pfd.events=POLLIN;
                             _pollSet.push_back(pfd);
                             send(serverSock, message, nbytes, MSG_NOSIGNAL);
-
+                            std::string parserRes = psqlManager.parseF(message, nbytes);
 
                         }
                     }
@@ -264,5 +269,20 @@ std::vector<pollfd>::iterator Server::findInPoll(int sock)
 {
     return std::find_if(_pollSet.begin(), _pollSet.end(), [&sock](pollfd p) {
                                     return p.fd == sock;
-                                });
+    });
+}
+
+void Server::writeToFile(const std::string &str)
+{
+    std::ofstream logfile;
+    logfile.open(Server::LOG_FILENAME);
+    if (logfile.is_open()) {
+        logfile << str << std::endl;
+        logfile.close();
+    }
+    else {
+        std::cout << "WRITE To FILE ERRRROR" << std::endl;
+    }
+
+
 }

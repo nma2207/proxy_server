@@ -17,11 +17,15 @@ protected:
     std::string type;
 };
 
-class StartupParser : public MessageParser
+class WithoutFirstByteParser : public MessageParser
 {
 public:
-    StartupParser(const std::string& type) : MessageParser{type}{};
+    WithoutFirstByteParser(const std::string& type) : MessageParser{type}{};
     std::string parse(char* buffer, int len) override;
+
+private:
+    std::string _parseStatup(char* buffer, int len);
+    std::string _parseCancelRequest(char*buffer, int len);
 };
 
 class AuthParser : public MessageParser
@@ -44,13 +48,6 @@ public:
     std::string parse(char* buffer, int len) override;
 };
 
-
-class CancelRequestParser : public MessageParser
-{
-public:
-    CancelRequestParser(const std::string& type) : MessageParser{type}{};
-    std::string parse(char* buffer, int len) override;
-};
 
 class CloseParser : public MessageParser
 {
@@ -217,16 +214,8 @@ class RowDescriptionParser: public MessageParser
 public:
     RowDescriptionParser(const std::string& type) : MessageParser{type}{};
     std::string parse(char* buffer, int len) override;
-};
 
-inline std::string RowDescriptionParser::parse(char *buffer, int len)
-{
-
-}
-
-class SslRequestParser: public MessageParser
-{
-public:
-    SslRequestParser(const std::string& type) : MessageParser{type}{};
-    std::string parse(char* buffer, int len) override;
+private:
+    std::string parseStartup(char* buffer, int len);
+    std::string parseCancelRequest(char* buffer, int len);
 };

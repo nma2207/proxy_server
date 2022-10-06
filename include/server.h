@@ -4,6 +4,7 @@
 #include <map>
 #include <poll.h>
 #include <string>
+#include "postgresql_manager.h"
 class Server
 {
 public:
@@ -27,6 +28,8 @@ private:
     std::vector<Session>::iterator findByClient(int);
     std::vector<Session>::iterator findByServer(int);
     std::vector<pollfd>::iterator findInPoll(int);
+    void writeToFile(const std::string&);
+
     int _port;
     int _listenSocket;
 
@@ -36,5 +39,9 @@ private:
     std::vector<pollfd> _pollSet;
     std::vector<Session> _sessions;
     std::map<int, ConnectionType> _connectionTypes;
-    };
+
+    PostgreSqlManager psqlManager;
+    static const int BUFFER_SIZE;
+    static const std::string LOG_FILENAME;
+};
 

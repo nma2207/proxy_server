@@ -42,7 +42,8 @@ PostgreSqlManager::PostgreSqlManager()
         {'p', new PasswordMessageParser("PasswordMessage")},
         {'Q', new QueryParser("Query")},
         {'S', new MessageParser("Sync")},
-        {'X', new MessageParser("Terminate")}
+        {'X', new MessageParser("Terminate")},
+        {'\0', new WithoutFirstByteParser("")}
     };
 }
 
@@ -57,5 +58,18 @@ PostgreSqlManager::~PostgreSqlManager()
 
 std::string PostgreSqlManager::parseB(char *buffer, int len)
 {
-    return {};
+    auto it = _parsersB.find(buffer[0]);
+    if (it == _parsersB.end())
+        return "CANNOT FIND THAT TYPE";
+    else
+        return it->second->parse(buffer, len);
+}
+
+std::string PostgreSqlManager::parseF(char *buffer, int len)
+{
+    auto it = _parsersF.find(buffer[0]);
+    if (it == _parsersF.end())
+        return "CANNOT FIND THAT TYPE";
+    else
+        return it->second->parse(buffer, len);
 }

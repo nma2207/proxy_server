@@ -46,6 +46,10 @@ std::string toString(std::vector<T> numbers)
     return result;
 }
 
+template std::vector<short> toIntN<short, 2>(char*, int, short(*f)(char*));
+template std::vector<int> toIntN<int, 4>(char*, int, int(*f)(char*));
+template std::string toString<short>(std::vector<short>);
+template std::string toString<int>(std::vector<int>);
 } // namespace
 
 
@@ -370,3 +374,34 @@ std::string RowDescriptionParser::parse(char *buffer, int len)
     result += ")";
     return type + result;
 }
+
+std::string WithoutFirstByteParser::parse(char *buffer, int len)
+{
+    int code = toInt32(buffer+4);
+    switch(code) {
+    case 80877103: // SSLRequst
+        return "SSLRequest";
+    case 196608:
+        return _parseStatup(buffer, len);
+    case 80877102:
+        return _parseCancelRequest(buffer, len);
+    }
+
+    return "";
+}
+
+std::string WithoutFirstByteParser::_parseStatup(char *buffer, int len)
+{
+     std::string paramName = toString(buffer+8, len-8);
+     int offset = 8 + paramName.length() + 1;
+     std::string value = toString(buffer+offset, len-offset);
+     return "Startup [" + paramName + ", " + value + "]";
+}
+
+std::string WithoutFirstByteParser::_parseCancelRequest(char *buffer, int len)
+{
+    int processId = toInt32(buffer+8);
+    int key = toInt32(buffer+12);
+    return "CancelRequst [" + std::to_string(processId) + " " + std::to_string(key)+"]";
+}
+
