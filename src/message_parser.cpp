@@ -3,6 +3,7 @@
 #include <byteswap.h>
 #include <vector>
 #include <numeric>
+#include <iostream>
 namespace {
 
 int toInt32(char* buffer)

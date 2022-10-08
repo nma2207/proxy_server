@@ -5,6 +5,8 @@
 #include <poll.h>
 #include <string>
 #include "postgresql_manager.h"
+#include <list>
+
 class Server
 {
 public:

@@ -14,7 +14,7 @@
 #include <linux/tcp.h>
 #include <fcntl.h>
 
-const int Server::BUFFER_SIZE=1024;
+const int Server::BUFFER_SIZE=20000;
 const std::string Server::LOG_FILENAME = "query.txt";
 
 Server::Server(int port, const std::string& serverIp, int serverPort)
@@ -64,25 +64,33 @@ bool Server::run()
     pollfd listenPollFd;
     listenPollFd.fd = _listenSocket;
     listenPollFd.events = POLLIN;
+    _pollSet.reserve(1000);
+    _sessions.reserve(1000);
     _pollSet.push_back(listenPollFd);
+
 
 
     while(true) {
         std::cout << "Wait for poll" << std::endl;
+        std::cout << _pollSet.size() << std::endl;
         int pollRes = poll(&_pollSet[0], _pollSet.size(), -1);
 
         if (pollRes <= 0) {
             std::cerr << "Poll error";
             return false;
         }
+        std::cout << "start poll " << pollRes <<" "<< _pollSet.size() <<std::endl;
 
 
         int n = _pollSet.size();
         int i=0;
         for(auto it = _pollSet.begin();i<n && it != _pollSet.end(); it++, i++) {
             //std::cout <<"revents "<<i << " "<<it->revents <<std::endl;
-            if (it->revents==0)
+            if (it->revents==0) {
+
                 continue;
+            }
+
             if (it->revents == POLLIN) {
                 if (it->fd == _listenSocket) {
                     int clientSock = accept(_listenSocket, NULL, NULL);
@@ -105,25 +113,32 @@ bool Server::run()
                 }
                 else {
                     //std::cout << "got mess" << std::endl;
-                    char message[1024];
-                    memset(message, 0, 1024);
-
-                    int nbytes = recv(it->fd, message, 1024, 0);
+                    char message[Server::BUFFER_SIZE];
+                    memset(message, 0, Server::BUFFER_SIZE);
+                    int nbytes=0;
+                    int nread=0;
+                     while ((nread=recv(it->fd, message+nbytes, Server::BUFFER_SIZE-nbytes, MSG_DONTWAIT))>0){
+                         nbytes+=nread;
+                     }
                     //std::cout << "nbytes "<<nbytes;
-                    if (nbytes <= 0) {
+                    if (nbytes < 0) {
                         ConnectionType type = _connectionTypes[it->fd];
 
-                        if (type == ProxyClient)
+
+                        if (type == ProxyClient) {
+                            std::cout <<"close 1 " <<nbytes << std::endl;
                             closeConnection(it->fd);
+                        }
                         else {
+                            std::cout <<"close 2 "<<nbytes << std::endl;
                             auto sessIt = findByServer(it->fd);
                             closeConnection(sessIt->clientSock);
                         }
 
                     }
 
-                    else {
-                        std::cout <<"recive:" << message;
+                    else if (nbytes>0){
+                        //std::cout <<"recive:" << message;
                         ConnectionType type = _connectionTypes[it->fd];
                         std::vector<Session>::iterator sessIt;
                         if (type == ProxyClient) {
@@ -140,8 +155,9 @@ bool Server::run()
                                 std::cerr << "client send to server error" << std::endl;
                                 closeConnection(sessIt->clientSock);
                             }
-                            std::cout << "sended bytes to server" << std::endl;
+                            //std::cout << "sended bytes to server" << std::endl;
                             std::string parserRes = psqlManager.parseF(message, nbytes);
+                            writeToFile(parserRes);
                         }
                         else if (type == ProxyServer && sessIt->clientSock > 0) {
                             int sendBytes = send(sessIt->clientSock, message, nbytes, MSG_NOSIGNAL);
@@ -151,8 +167,9 @@ bool Server::run()
 
                                 closeConnection(sessIt->clientSock);
                             }
-                            std::cout << "sended bytes to client" << std::endl;
+                            //std::cout << "sended bytes to client" << std::endl;
                             std::string parserRes = psqlManager.parseB(message, nbytes);
+                            writeToFile(parserRes);
                         }
                         else if (sessIt->serverSock == 0) {
                             int serverSock = this->createServerSock();
@@ -168,32 +185,38 @@ bool Server::run()
                             _pollSet.push_back(pfd);
                             send(serverSock, message, nbytes, MSG_NOSIGNAL);
                             std::string parserRes = psqlManager.parseF(message, nbytes);
+                            writeToFile(parserRes);
 
                         }
                     }
                 }
             }
-            else if (it->revents == POLLERR) {
+            else {
                 //std::cout <<"err" << i << std::endl;
                 if (it->fd == _listenSocket) {
                     std::cerr << "socket listen error" << std::endl;
                 }
                 else {
-                    std::cout << "disconnect client" <<std::endl;
-                    closeConnection(it->fd);
+                    std::cout << "disconnect client " << std::hex << it->revents << std::endl;
+                    if (it->fd != 0)
+                        closeConnection(it->fd);
                 }
             }
         }
 
-        std::remove_if(_pollSet.begin(), _pollSet.end(), [](pollfd pfd){
+        std::cout << std::endl;
+        _pollSet.erase(std::remove_if(_pollSet.begin(), _pollSet.end(), [](pollfd pfd){
             return pfd.fd == -1;
-        });
+        }), _pollSet.end());
+
+
     }
 }
 
 void Server::close()
 {
     for(Session s: _sessions){
+        std::cout <<"close 3" << std::endl;
         closeConnection(s.clientSock);
     }
 
@@ -235,6 +258,7 @@ int Server::createServerSock()
 
 void Server::closeConnection(int clientSock)
 {
+    std::cout << "close connection" << clientSock << std::endl;
     ::close(clientSock);
     auto sessionIt = findByClient(clientSock);
     int serverSock = sessionIt->serverSock;
@@ -275,10 +299,11 @@ std::vector<pollfd>::iterator Server::findInPoll(int sock)
 void Server::writeToFile(const std::string &str)
 {
     std::ofstream logfile;
-    logfile.open(Server::LOG_FILENAME);
+    logfile.open(Server::LOG_FILENAME, std::ios_base::app);
     if (logfile.is_open()) {
         logfile << str << std::endl;
         logfile.close();
+        //std::cout << "Write to file" << str << std::endl;
     }
     else {
         std::cout << "WRITE To FILE ERRRROR" << std::endl;
