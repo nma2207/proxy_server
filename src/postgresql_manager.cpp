@@ -60,7 +60,7 @@ std::string PostgreSqlManager::parseB(char *buffer, int len)
 {
     auto it = _parsersB.find(buffer[0]);
     if (it == _parsersB.end())
-        return "CANNOT FIND THAT TYPE";
+        return std::string("CANNOT FIND THAT TYPE ") + buffer[0];
     else
         return it->second->parse(buffer, len);
 }
@@ -69,7 +69,7 @@ std::string PostgreSqlManager::parseF(char *buffer, int len)
 {
     auto it = _parsersF.find(buffer[0]);
     if (it == _parsersF.end())
-        return "CANNOT FIND THAT TYPE";
+        return std::string("CANNOT FIND THAT TYPE ") + buffer[0];
     else
         return it->second->parse(buffer, len);
 }

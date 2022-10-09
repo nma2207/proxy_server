@@ -55,7 +55,8 @@ bool Server::start()
         return false;
     }
 
-    std::cout << "PROXY server started successfully" << std::endl;
+    std::cout << "PROXY server started successfully at port"<<_port << std::endl;
+    std::cout << "Postgresql address: "<<_serverIp << ":" <<_serverPort << std::endl;
     return true;
 }
 
@@ -72,7 +73,6 @@ bool Server::run()
 
     while(true) {
         std::cout << "Wait for poll" << std::endl;
-        std::cout << _pollSet.size() << std::endl;
         int pollRes = poll(&_pollSet[0], _pollSet.size(), -1);
 
         if (pollRes <= 0) {
@@ -121,16 +121,16 @@ bool Server::run()
                          nbytes+=nread;
                      }
                     //std::cout << "nbytes "<<nbytes;
-                    if (nbytes < 0) {
+                    if (nbytes <= 0) {
                         ConnectionType type = _connectionTypes[it->fd];
 
 
                         if (type == ProxyClient) {
-                            std::cout <<"close 1 " <<nbytes << std::endl;
+                            //std::cout <<"close 1 " <<nbytes << std::endl;
                             closeConnection(it->fd);
                         }
                         else {
-                            std::cout <<"close 2 "<<nbytes << std::endl;
+                            //std::cout <<"close 2 "<<nbytes << std::endl;
                             auto sessIt = findByServer(it->fd);
                             closeConnection(sessIt->clientSock);
                         }
@@ -148,7 +148,21 @@ bool Server::run()
                             sessIt = findByServer(it->fd);
                         }
 
-                        if (type == ProxyClient && sessIt->serverSock > 0) {
+                        if (type == ProxyClient) {
+                            if (sessIt->serverSock == 0) {
+                                int serverSock = this->createServerSock();
+                                _connectionTypes[serverSock] = ProxyServer;
+                                if (serverSock < 0) {
+                                    std::cerr << "Server connection error" << std::endl;
+                                    return false;
+                                }
+                                sessIt->serverSock=serverSock;
+                                pollfd pfd;
+                                pfd.fd=serverSock;
+                                pfd.events=POLLIN;
+                                _pollSet.push_back(pfd);
+                            }
+
                             int sendBytes = send(sessIt->serverSock, message, nbytes, MSG_NOSIGNAL);
 
                             if (sendBytes < 0) {
@@ -158,6 +172,10 @@ bool Server::run()
                             //std::cout << "sended bytes to server" << std::endl;
                             std::string parserRes = psqlManager.parseF(message, nbytes);
                             writeToFile(parserRes);
+
+                            if (message[0] == 'X') {// terminate
+                                closeConnection(sessIt->clientSock);
+                            }
                         }
                         else if (type == ProxyServer && sessIt->clientSock > 0) {
                             int sendBytes = send(sessIt->clientSock, message, nbytes, MSG_NOSIGNAL);
@@ -171,23 +189,6 @@ bool Server::run()
                             std::string parserRes = psqlManager.parseB(message, nbytes);
                             writeToFile(parserRes);
                         }
-                        else if (sessIt->serverSock == 0) {
-                            int serverSock = this->createServerSock();
-                            _connectionTypes[serverSock] = ProxyServer;
-                            if (serverSock < 0) {
-                                std::cerr << "Server connection error" << std::endl;
-                                return false;
-                            }
-                            sessIt->serverSock=serverSock;
-                            pollfd pfd;
-                            pfd.fd=serverSock;
-                            pfd.events=POLLIN;
-                            _pollSet.push_back(pfd);
-                            send(serverSock, message, nbytes, MSG_NOSIGNAL);
-                            std::string parserRes = psqlManager.parseF(message, nbytes);
-                            writeToFile(parserRes);
-
-                        }
                     }
                 }
             }
@@ -197,7 +198,7 @@ bool Server::run()
                     std::cerr << "socket listen error" << std::endl;
                 }
                 else {
-                    std::cout << "disconnect client " << std::hex << it->revents << std::endl;
+                    //std::cout << "disconnect client " << std::hex << it->revents << std::endl;
                     if (it->fd != 0)
                         closeConnection(it->fd);
                 }
@@ -216,7 +217,7 @@ bool Server::run()
 void Server::close()
 {
     for(Session s: _sessions){
-        std::cout <<"close 3" << std::endl;
+        //std::cout <<"close 3" << std::endl;
         closeConnection(s.clientSock);
     }
 
@@ -258,7 +259,7 @@ int Server::createServerSock()
 
 void Server::closeConnection(int clientSock)
 {
-    std::cout << "close connection" << clientSock << std::endl;
+    //std::cout << "close connection" << clientSock << std::endl;
     ::close(clientSock);
     auto sessionIt = findByClient(clientSock);
     int serverSock = sessionIt->serverSock;
