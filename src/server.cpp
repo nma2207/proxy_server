@@ -27,7 +27,7 @@ Server::Server(int port, const std::string& serverIp, int serverPort)
 
 bool Server::start()
 {
-    _listenSocket = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, IPPROTO_TCP);
+    _listenSocket = socket(AF_INET, SOCK_STREAM, 0);
     if (_listenSocket == -1) {
         std::cerr << "get socket error" << std::endl;
         return false;
@@ -36,6 +36,11 @@ bool Server::start()
     int turnOn=1;
     if (setsockopt(_listenSocket, SOL_SOCKET, SO_REUSEADDR, &turnOn, sizeof(turnOn)) == -1) {
         std::cerr << "set reuse optioin error" << std::endl;
+        return false;
+    }
+
+    if (fcntl(_listenSocket,F_SETFL, fcntl(_listenSocket, F_GETFD,0) | O_NONBLOCK) < 0) {
+        std::cerr << "set nonblocking error" << std::endl;
         return false;
     }
 
@@ -72,20 +77,24 @@ bool Server::run()
 
 
     while(true) {
-        std::cout << "Wait for poll" << std::endl;
+        std::cout << "Wait for poll " <<_pollSet.size()<<" "<<_sessions.size()<<" "<< _connectionTypes.size()<< std::endl;
         int pollRes = poll(&_pollSet[0], _pollSet.size(), -1);
 
-        if (pollRes <= 0) {
+        if (pollRes < 0) {
             std::cerr << "Poll error";
             return false;
         }
-        std::cout << "start poll " << pollRes <<" "<< _pollSet.size() <<std::endl;
+        else if (pollRes == 0){
+            std::cerr << "timeout error" << std::endl;
+            return false;
+        }
+        //std::cout << "start poll " << pollRes <<" "<< _pollSet.size() <<std::endl;
 
 
         int n = _pollSet.size();
         int i=0;
         for(auto it = _pollSet.begin();i<n && it != _pollSet.end(); it++, i++) {
-            //std::cout <<"revents "<<i << " "<<it->revents <<std::endl;
+            //std::cout <<"revents "<<i << " "<<it->revents  << " " << it->fd<<std::endl;
             if (it->revents==0) {
 
                 continue;
@@ -108,7 +117,7 @@ bool Server::run()
                     clientPollFd.fd = clientSock;
                     clientPollFd.events = POLLIN;
                     _pollSet.push_back(clientPollFd);
-                    std::cout <<"add new client, client count: " << _pollSet.size() - 1 << std::endl;
+                    std::cout <<"add new client, client count: " << _pollSet.size() - 1 << " "<<clientSock<< std::endl;
 
                 }
                 else {
@@ -120,18 +129,19 @@ bool Server::run()
                      while ((nread=recv(it->fd, message+nbytes, Server::BUFFER_SIZE-nbytes, MSG_DONTWAIT))>0){
                          nbytes+=nread;
                      }
-                    //std::cout << "nbytes "<<nbytes;
-                    if (nbytes <= 0) {
+                    //std::cout << "nbytes "<<nbytes << std::endl;
+                    if (nbytes < 0) {
                         ConnectionType type = _connectionTypes[it->fd];
 
 
                         if (type == ProxyClient) {
-                            //std::cout <<"close 1 " <<nbytes << std::endl;
+                            std::cout <<"close 1 " <<nbytes << std::endl;
                             closeConnection(it->fd);
                         }
                         else {
-                            //std::cout <<"close 2 "<<nbytes << std::endl;
+
                             auto sessIt = findByServer(it->fd);
+                            std::cout <<"close 2 "<< nbytes <<" "<< sessIt->clientSock <<std::endl;
                             closeConnection(sessIt->clientSock);
                         }
 
@@ -161,12 +171,13 @@ bool Server::run()
                                 pfd.fd=serverSock;
                                 pfd.events=POLLIN;
                                 _pollSet.push_back(pfd);
+                                std::cout << "add server "<<sessIt->clientSock<<" " <<serverSock << std::endl;
                             }
 
                             int sendBytes = send(sessIt->serverSock, message, nbytes, MSG_NOSIGNAL);
 
                             if (sendBytes < 0) {
-                                std::cerr << "client send to server error" << std::endl;
+                                std::cerr << "client send to server error "<<sessIt->clientSock << " " <<sessIt->serverSock<<" "<<sendBytes<<" " << errno<< std::endl;
                                 closeConnection(sessIt->clientSock);
                             }
                             //std::cout << "sended bytes to server" << std::endl;
@@ -174,6 +185,7 @@ bool Server::run()
                             writeToFile(parserRes);
 
                             if (message[0] == 'X') {// terminate
+                                std::cout <<"terminate " <<sessIt->clientSock<<std::endl;
                                 closeConnection(sessIt->clientSock);
                             }
                         }
@@ -181,7 +193,7 @@ bool Server::run()
                             int sendBytes = send(sessIt->clientSock, message, nbytes, MSG_NOSIGNAL);
 
                             if (sendBytes < 0) {
-                                std::cerr << "client send to server error" << std::endl;
+                                std::cerr << "server send to client error" << std::hex << errno<<std::dec<< std::endl;
 
                                 closeConnection(sessIt->clientSock);
                             }
@@ -194,18 +206,18 @@ bool Server::run()
             }
             else {
                 //std::cout <<"err" << i << std::endl;
-                if (it->fd == _listenSocket) {
-                    std::cerr << "socket listen error" << std::endl;
-                }
-                else {
-                    //std::cout << "disconnect client " << std::hex << it->revents << std::endl;
-                    if (it->fd != 0)
-                        closeConnection(it->fd);
-                }
+//                if (it->fd == _listenSocket) {
+//                    std::cerr << "socket listen error" << std::endl;
+//                }
+//                else {
+//                    std::cout << "disconnect client " <<it->fd<<" "<< std::hex << it->revents << std::endl;
+//                    if (it->fd != 0)
+//                        closeConnection(it->fd);
+//                }
             }
         }
 
-        std::cout << std::endl;
+        //std::cout << std::endl;
         _pollSet.erase(std::remove_if(_pollSet.begin(), _pollSet.end(), [](pollfd pfd){
             return pfd.fd == -1;
         }), _pollSet.end());
@@ -233,20 +245,39 @@ void Server::close()
 int Server::createServerSock()
 {
     sockaddr_in addr;
+    int turnOn=1;
     int sock = socket(AF_INET, SOCK_STREAM, 0 );
     if (sock < 0) {
         std::cerr << "cannot create server socket";
         return sock;
     }
+    int rc;
+    rc = setsockopt(sock, SOL_SOCKET,  SO_REUSEADDR, (char *)&turnOn, sizeof(turnOn));
+    if (rc < 0)
+    {
+        std::cerr << "setsockopt() failed";
+        return rc;
+    }
 
+
+    if (setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, &turnOn, sizeof(int)) <0){
+        std::cerr << "setsockopt(TCP_NODELAY) failed";
+        return -1;
+    }
+
+    rc = fcntl(sock,F_SETFL, fcntl(sock, F_GETFD,0) | O_NONBLOCK);
+    if (rc < 0) {
+        std::cerr << "set nonblock error" << std::endl;
+        return rc;
+    }
     addr.sin_family = AF_INET;
 
     addr.sin_addr.s_addr = inet_addr(_serverIp.data());
 
     addr.sin_port=htons(_serverPort);
-    int rc = connect(sock, (sockaddr*)&addr, sizeof(addr));
+    rc = connect(sock, (sockaddr*)&addr, sizeof(addr));
     //rc = bind(sock, (struct sockaddr *)&addr, sizeof(addr));
-    if (rc < 0) {
+    if (rc < 0 && errno != EINPROGRESS) {
         std::cerr << "connect to server error "<<rc << std::endl;
         std::cout << errno <<std::endl;
         return rc;
@@ -259,7 +290,7 @@ int Server::createServerSock()
 
 void Server::closeConnection(int clientSock)
 {
-    //std::cout << "close connection" << clientSock << std::endl;
+    std::cout << "close connection" << clientSock << std::endl;
     ::close(clientSock);
     auto sessionIt = findByClient(clientSock);
     int serverSock = sessionIt->serverSock;
@@ -270,7 +301,8 @@ void Server::closeConnection(int clientSock)
 
 
     if (serverSock > 0) {
-        ::close(sessionIt->serverSock);
+        std::cout << "close connection" << sessionIt->serverSock << std::endl;
+        ::close(serverSock);
         _connectionTypes.erase(serverSock);
         findInPoll(serverSock)->fd=-1;
     }
