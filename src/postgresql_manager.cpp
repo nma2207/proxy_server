@@ -2,6 +2,8 @@
 
 PostgreSqlManager::PostgreSqlManager()
 {
+    // парсеры клиента и сервера различаем по значению первого байта, как указано в документации
+    // https://www.postgresql.org/docs/current/protocol-message-formats.html
     _parsersB = {
         {'R', new AuthParser("Authentication")},
         {'K', new BackendKeyParser("BackendKeyData")},
@@ -9,9 +11,9 @@ PostgreSqlManager::PostgreSqlManager()
         {'3', new MessageParser("CloseComplete")},
         {'C', new CommandCompleteParser("CommandComplete")},
         {'d', new CopyDataParser("CopyData")},
-        {'G', new CopyInParser("CopyInResponce")},
-        {'H', new CopyOutParser("CopyOutParser")},
-        {'W', new CopyBothParser("CopyBothResponce")},
+        {'G', new CopyParser("CopyInResponce")},
+        {'H', new CopyParser("CopyOutParser")},
+        {'W', new CopyParser("CopyBothResponce")},
         {'D', new DataRowParser("DataRow")},
         {'I', new MessageParser("EmptyQueryResponce")},
         {'E', new ErrorResponceParser("ErrorResonce")},
@@ -47,6 +49,7 @@ PostgreSqlManager::PostgreSqlManager()
     };
 }
 
+// т.к. мы выделяли память динамически, надо ее очищать
 PostgreSqlManager::~PostgreSqlManager()
 {
     for(auto it = _parsersB.begin(); it!=_parsersB.end(); it++)
@@ -56,8 +59,12 @@ PostgreSqlManager::~PostgreSqlManager()
         delete it->second;
 }
 
+/**
+ * @brief парсим сообщения от сервера
+ */
 std::string PostgreSqlManager::parseB(char *buffer, int len)
 {
+    // ищем итератор на нужный парсер, если его нет то возвращаем что не смогли его найти, точно так же и в клиентской части
     auto it = _parsersB.find(buffer[0]);
     if (it == _parsersB.end())
         return std::string("CANNOT FIND THAT TYPE ") + buffer[0];

@@ -2,7 +2,9 @@
 
 #include <string>
 /**
- * @brief Abstract class for parsers
+ * @brief Базовый класс парсера. здесь не буду каждый парсер расписывать, т.к. их много, а они просто соответствуют протоколу
+ * общий прицип такой, что в строке передается тип пакеа, который пишется в начале, а сообщение пишется в квадратных скобках.
+ * в базовом парсере просто возвращаемся тип сообщения
  */
 class MessageParser
 {
@@ -17,6 +19,9 @@ protected:
     std::string type;
 };
 
+/**
+ * @brief Специальный класс, у которого нет первого байта, он обрабатывает сообщения Startup, SSLRequest и CancelRequest
+ */
 class WithoutFirstByteParser : public MessageParser
 {
 public:
@@ -24,6 +29,9 @@ public:
     std::string parse(char* buffer, int len) override;
 
 private:
+    /**
+     * в зависимсти от специального кода выбирается нужный парсер
+     */
     std::string _parseStatup(char* buffer, int len);
     std::string _parseCancelRequest(char*buffer, int len);
 };
@@ -78,27 +86,12 @@ public:
     std::string parse(char* buffer, int len) override;
 };
 
-class CopyInParser : public MessageParser
+class CopyParser : public MessageParser
 {
 public:
-    CopyInParser(const std::string& type) : MessageParser{type}{};
+    CopyParser(const std::string& type) : MessageParser{type}{};
     std::string parse(char* buffer, int len) override;
 };
-
-class CopyOutParser : public MessageParser
-{
-public:
-    CopyOutParser(const std::string& type) : MessageParser{type}{};
-    std::string parse(char* buffer, int len) override;
-};
-
-class CopyBothParser : public MessageParser
-{
-public:
-    CopyBothParser(const std::string& type) : MessageParser{type}{};
-    std::string parse(char* buffer, int len) override;
-};
-
 
 class DataRowParser : public MessageParser
 {

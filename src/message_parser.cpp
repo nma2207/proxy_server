@@ -4,8 +4,18 @@
 #include <vector>
 #include <numeric>
 #include <iostream>
-namespace {
+#include <sstream>
 
+namespace {
+/*
+ * описаны вспомагательные функции для парсинга
+ */
+
+/**
+ * @brief toInt32 когда кучу байт надо преобразовать в число 4 байтовое
+ * @param buffer Указатель на начало, откуда надо парсить
+ * @return 4 байтоове число
+ */
 int toInt32(char* buffer)
 {
     int tmp;
@@ -13,6 +23,11 @@ int toInt32(char* buffer)
     return __bswap_constant_32(tmp);
 }
 
+/**
+ * @brief toInt16 когда кучу байт надо преобразовать в число 2 байтовое
+ * @param buffer Указатель на начало, откуда надо парсить
+ * @return 2 байтовое число
+ */
 short toInt16(char*buffer)
 {
     short tmp;
@@ -20,40 +35,58 @@ short toInt16(char*buffer)
     return __bswap_constant_16(tmp);
 }
 
+/**
+ * @brief toIntN  Когда надо преобразовать кучу байт в массив чисел
+ * @param buffer указатель на начало
+ * @param n - количество чисел в массиве
+ * T- тип числа, SIZE - его размер в байтах
+ * @return вектор чисел
+ */
 template <class T, int SIZE>
 std::vector<T> toIntN(char*buffer, int n, T(*f)(char*buffer))
 {
-    std::vector<T> result(SIZE);
+    std::vector<T> result(n);
     for(int i=0; i<n; i++) {
         result[i] = f(buffer + i*SIZE);
     }
 
     return result;
 }
+
+/**
+ * @brief toString Преобразование байтов в строку
+ * @param buffer Указатель на начало
+ * @param n максимальное количсевтво символов в строке
+ * @return строку
+ */
 std::string toString(char*buffer, int n)
 {
     char tmp[n];
-    strncpy(tmp, buffer, n);
+    strncpy(tmp, buffer, n); // strncpy  копирует от начала, и пока не встретит символ '\0' или конец пакета
     return std::string{tmp};
 }
 
+/**
+ * @brief Чтобы преобразовать массив чисел в строку для сохранения в лог-файл
+ */
 template<class T>
-std::string toString(std::vector<T> numbers)
+std::string toString(const std::vector<T>& numbers)
 {
-    std::string result = "[ "+ std::accumulate(numbers.begin(), numbers.end(), std::string{}, [](std::string a, T b){
-        return a + ", " + std::to_string(b);
-    }) + "]";
-
-    return result;
+    std::stringstream ss;
+    ss << "[";
+    for(T n: numbers)
+        ss<<n <<", ";
+    ss <<"]";
+    return ss.str();
 }
 
-template std::vector<short> toIntN<short, 2>(char*, int, short(*f)(char*));
-template std::vector<int> toIntN<int, 4>(char*, int, int(*f)(char*));
-template std::string toString<short>(std::vector<short>);
-template std::string toString<int>(std::vector<int>);
+template std::string toString<short>(const std::vector<short>&);
+
 } // namespace
 
-
+/*
+ * ниже описаны все алгоритмы парсинга пакетов, не вижу смысла коментировать каждый
+ */
 std::string AuthParser::parse(char *buffer, int len)
 {
     int messLen = toInt32(buffer+1);
@@ -130,10 +163,12 @@ std::string BindParser::parse(char *buffer, int len)
     short resultColumNumber=toInt16(buffer+offset);
     offset+=2;
 
-    std::vector<short> resultColumn = toIntN<short, 2>(buffer+offset, paramNumber, toInt16);
+    std::vector<short> resultColumn = toIntN<short, 2>(buffer+offset, resultColumNumber, toInt16);
 
 
-    return type+":["+destinationPortalName+","+sourceStatement+","+toString(paramFormatCode) + toString(resultColumn) +"]";
+    std::string res = type+":["+destinationPortalName+","+sourceStatement+","+toString(paramFormatCode) + toString(resultColumn) +"]";
+
+    return res;
 }
 
 std::string CloseParser::parse(char *buffer, int len)
@@ -164,25 +199,7 @@ std::string CopyFailParser::parse(char *buffer, int len)
 }
 
 
-// объединить 3 штуки
-std::string CopyInParser::parse(char *buffer, int len)
-{
-    std::string formatType = buffer[5]==0 ? "text" : "binary";
-    short columNumber = toInt16(buffer+6);
-    std::vector<short> formats = toIntN<short, 2>(buffer+8, columNumber, toInt16);
-    return type + ":["+formatType + ", " + toString(formats) +"]";
-}
-
-
-std::string CopyOutParser::parse(char *buffer, int len)
-{
-    std::string formatType = buffer[5]==0 ? "text" : "binary";
-    short columNumber = toInt16(buffer+6);
-    std::vector<short> formats = toIntN<short, 2>(buffer+8, columNumber, toInt16);
-    return type + ":["+formatType + ", " + toString(formats) +"]";
-}
-
-std::string CopyBothParser::parse(char *buffer, int len)
+std::string CopyParser::parse(char *buffer, int len)
 {
     std::string formatType = buffer[5]==0 ? "text" : "binary";
     short columNumber = toInt16(buffer+6);
