@@ -1,11 +1,17 @@
 commands:
-start psql:
+Запускаем сервер Postgresql по адресу `localhost:5432`
+
 ```sudo systemctl start postgres```
 ***
-connect to server:
+Запуск консольного клиента Postgresql через прокси сервер, который находится по адресу `localhost:8080`:
+
 ```psql -U postgres -p 8080 -h localhost testdb --set=sslmode=disable```
+
+![client connection](ps_client.png)
+
 ***
-pgbench:
+Результаты тестирования на 100 клиентах, по 100 транзакций на каждого клиента на 10 параллельных потоках (примерно по 10 клиентов на поток)
+
 ```
 pgbench --user  postgres  --host localhost --port 8080 --client 100 --transactions 100  --jobs 10 -M prepared testdb
 pgbench (14.5)
@@ -21,6 +27,10 @@ latency average = 139.987 ms
 initial connection time = 97.115 ms
 tps = 714.352404 (without initial connection time)
 ```
+
+![pgbench](pgbench_result.png)
+
+также логи данного тестирования находятся в файле [ссылка на файл](pgbench_query_logs.txt)
 
 ***
 данные компьютера:
