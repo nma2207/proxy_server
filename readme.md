@@ -27,6 +27,7 @@ initial connection time = 97.115 ms
 tps = 714.352404 (without initial connection time)
 ```
 
+(на изображении результаты тестирования за 13.10.2022, а в тексте за 12.10.2022)
 ![pgbench](pgbench_result.png)
 
 также логи данного тестирования находятся в файле [ссылка на файл](pgbench_query_logs.txt)
