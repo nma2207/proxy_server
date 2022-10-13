@@ -1,4 +1,3 @@
-commands:
 Запускаем сервер Postgresql по адресу `localhost:5432`
 
 ```sudo systemctl start postgres```
